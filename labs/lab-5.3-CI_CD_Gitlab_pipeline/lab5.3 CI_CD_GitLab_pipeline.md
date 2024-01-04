@@ -12,7 +12,7 @@ if not available, create a storage account in Azure portal manually
 ## Lab
 
 
-Let's setup the terraform files to create the resources.
+Let's setup the terraform files to create the resources on azure shell.
 
 #### create the main file to create the resources
 main.tf
@@ -114,171 +114,196 @@ location = "eastus"
 
 ### setup the gitlab to initiate the CI/CD pipeline to manage tf project
 
-####Creating GitLab Project and Uploading the Code
+####Create the GitLab Project with your account and Uploading the Code. account creation takes a few mins and it's free of cost.
 
 Go to Gitlab.com, log in with your credentials, select “New Project” and “Create Blank Project”
 
 ![gitlab account](https://github.com/raviag09/terraform-azure-intro/blob/main/labs/lab-5.3-CI_CD_Gitlab_pipeline/images/create_project_gitlab.PNG)
 
 
+Clone your repository to your azure machine(bash) to upload your code:
 
-Create a subdirectory called “load-balancer”.
 ```
-mkdir load-balancer
+git clone https://gitlab.com/ravikiranag09/terraform-test.git
 ```
 
-#### Load balancer main
+we have the repository in our machine now, we will drop the tf files created earlier:
 
-Move the “lb.tf” file to the “load-balancer” directory and rename the file “main.tf”.  (Recall that each module should have a main.tf file as the principal configuration entry point.)  Let's make a couple changes to the file.
+![folderfiles](https://github.com/raviag09/terraform-azure-intro/assets/131940031/28dca301-0a52-4098-b4eb-185765283516)
 
-First, a module should include its provider requirements.  So add the following to the top of the load balancer main.tf.  (Note that we do not add a backend specification or a provider block.)
+Once copied, please ensure to check the files in terraform-test repository folder.
+
 ```
-terraform {
-  required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = ">= 2.40, < 3.0"
-    }
-  }
-  required_version = ">= 1.0.0"
+[ ~/clouddrive ]$ cp * /home/student24/clouddrive/terraform-test
+
+```
+once the above steps are finished then the files will reflect in the below way:
+
+![repositoryfiles](https://github.com/raviag09/terraform-azure-intro/assets/131940031/7aa215c6-465a-47b8-ad9b-e9980512438f)
+
+
+To upload the files to the repo, we’ll use the following commands:
+
+```
+git add . #add the changes to be commited
+git status #displays what files to be uploaded
+git commit -m "included tf code changes" #commit the changes
+git push #changes will be pushed to repo
+```
+
+In the portal, ensure the files are available:
+
+![gitlab_project_view](https://github.com/raviag09/terraform-azure-intro/assets/131940031/8e58b3be-1f7a-436a-b202-d03d7d9a784a)
+
+
+
+setup the Gitlab Pipeline
+
+select Build >> pipeline Editor and then start “Create new CI/CD pipeline” option
+
+The following snippet will be the code we’ll be using to deploy Terraform through gitlab
+
+
+![ymldeploy](https://github.com/raviag09/terraform-azure-intro/assets/131940031/42e8fa2f-f3ec-4894-b0a2-68f49cc4f61e)
+
+gitlab-ci.yml file. once the below code is added to yml then save by hitting the commit stages option.
+
+```
+stages:
+  - validate
+  - plan
+  - apply
+
+default:
+  image:
+    name: hashicorp/terraform:latest
+    entrypoint:
+      - /usr/bin/env
+      - "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+  before_script:
+    - terraform init
+  cache:
+    key: terraform
+    paths:
+      - .terraform
+
+terraform_validate:
+  stage: validate
+  script:
+    - terraform validate
+
+terraform_plan:
+  stage: plan
+  script: 
+    - terraform plan -var-file="variables.tfvars" --out plan
+  artifacts:
+    paths:
+      - plan
+
+terraform_apply:
+  stage: apply
+  script:
+    - terraform apply --auto-approve plan
+  when: manual
+  allow_failure: false
+  only:
+    refs:
+      - main
+
+```
+
+Run the pipeline manually or set it auto trigger to run the pipeline stages:
+
+the stages of the pipeline :
+
+![pipeline](https://github.com/raviag09/terraform-azure-intro/assets/131940031/9fe7e599-f0ec-435d-9869-fb8599fb45ac)
+
+
+
+as your un, you may encouter an error  because we haven’t set up a service principal to deploy the resources to Azure yet, and because we didn’t specify the variables needed for Azure in Gitlab:
+
+
+ARM_CLIENT_ID
+ARM_CLIENT_SECRET
+ARM_SUBSCRIPTION_ID
+ARM_TENANT_ID
+
+###Creating the Service Principal in Azure
+
+we will run the commands on power shell to setup the AZ service principal. 
+
+NOTE: the first time users need to authenticate in order to execute the AZ commands, power shell options. hit the url from the powershell and paste the token
+
+
+Go to your Azure subscription and find your subscription id. Open a Powershell session and make sure you have AZ CLI installed on your machine, and then run the following commands:
+
+Below command helps us to get the subscription id - 1ba9683f-8c9d-4836-a22a-df6dab9d72f0 
+
+```
+Get-AzSubscription | more                          
+
+Name                     Id                                   TenantId                             State
+----                     --                                   --------                             -----
+Terraform Course Labs 24 1ba9683f-8c9d-4836-a22a-df6dab9d72f0 ffc39dc1-4df8-4fac-a312-e2cec1d1abc5 Enabled
+
+```
+
+Run the below commands to create the service prinicipal and get the details . If you encounter an error, then we need to enable the permissions for subscription
+
+
+```
+
+$SubscriptionId =  "1ba9683f-8c9d-4836-a22a-df6dab9d72f0"
+az account set --subscription $subscriptionId
+az ad sp create-for-rbac --role="Contributor" --scopes="subscriptions/$subscriptionId" --name "id-terraformtest"
+
+```
+
+see the screenshots in providing the permissions:
+
+![roleschange_subscription](https://github.com/raviag09/terraform-azure-intro/assets/131940031/60ab7c1f-44a7-485f-9fa8-b07f5e648a24)
+
+
+![user_Access_admin_role_assignment](https://github.com/raviag09/terraform-azure-intro/assets/131940031/7c428767-31eb-4d7c-9c5a-72db4cc487c9)
+
+![subscription_role_assignments](https://github.com/raviag09/terraform-azure-intro/assets/131940031/09da4694-5b7b-42ea-b4d5-839dd9474a9f)
+
+
+
+the  commands will create a service principal on your Azure Active Directory that has contributor access to the subscription you want to deploy the resources, this is more than enough to provision everything successfully.
+
+
+```
+$SubscriptionId =  "1ba9683f-8c9d-4836-a22a-df6dab9d72f0"
+
+az login
+az account set --subscription $subscriptionId
+az ad sp create-for-rbac --role="Contributor" --scopes="subscriptions/$subscriptionId" --name "id-terraformtest"
+```
+
+The output will display for the above commands:
+
+
+```
+{
+  "appId": "0a2bc3fb-89e3-4552-a186-4822eb097394",  # ARM_CLIENT_ID — Service Principal appID
+  "displayName": "id-terraformtest",
+  "password": "66Z8Q~PmW.PqWAV3zFWfwZIDsGxQHee4cSEqSdl2", #ARM_CLIENT_SECRET — Service Principal Password
+  "tenant": "ffc39dc1-4df8-4fac-a312-e2cec1d1abc5"   # ARM_TENANT_ID — Tenant ID
 }
 ```
 
-Second, to avoid a name collision later when you do terraform apply, change the Azure name of the following load balancer resources by adding a "mod-" prefix:
-  * azurerm_public_ip:  change name from "aztf-labs-lb-public-ip" to "mod-aztf-labs-lb-public-ip"
-  * azurerm_lb: change name from "aztf-labs-loadBalancer" to "mod-aztf-labs-loadBalancer"
-  * azurerm_lb_rule:  change name from "aztf-labs-lb-rule" to "mod-aztf-labs-lb-rule"
+Adding the above output Azure Variables to Gitlab
 
-#### Load balancer variables
+The following information will be used based on the output that we had in the previous section:
 
-Within the “load-balancer” directory, create a file called “variables.tf”.
-
-Go through the **load balancer main.tf** file and look for what arguments will need values passed into the module.  (The load balancer module cannot access the parent resources directly.)  These are candidates for the input variables for the load balancer module.
-
-In the load balancer variables.tf file, add variables for the following:
-  * location
-  * resource group name
-  * tags
-
-Try to write the variables.tf code on your own initially. Compare your code to the solution below (or in the load-balancer/variables.tf file in the solution folder).
-
-<details>
-
- _<summary>Click to see solution for load balancer module variables</summary>_
-
-```
-variable "location" {
-  type = string
-}
-
-variable "resource_group_name" {
-  type = string
-}
-
-variable "tags" {
-  type = map(string)
-}
-```
-</details>
-
-Open the load-balancer main.tf file and use these variables to populate the corresponding arguments in all of the resources in the file.
-
-#### Load balancer outputs
-
-Within the “load-balancer” directory, create a file called outputs.tf”.
-
-Go through the root module's files to see where load balancer attributes are referenced.  These are candidates for output values from the load balancer module.
-
-In the load balancer outputs.tf file, add outputs for the following:
-  * load balancer backend address pool id
-  * load balancer public ip address
-
-Try to write this on your own initially.  Compare your code to the solution below (or in the load-balancer/outputs.tf file in the solution folder).
-
-<details>
-
- _<summary>Click to see solution for load balancer module outputs</summary>_
-
-```
-output "backend_address_pool_id" {
-  value = azurerm_lb_backend_address_pool.lab.id
-}
-
-output "public_ip_address" {
-  value = azurerm_public_ip.lab-lb.ip_address
-}
-```
-</details>
-
-At this point, you now have a nested module with inputs and outputs defined.  Next, let's use the new module.
-
-### Modify code to call the new module
-
-Open the file vm-cluster.tf in the root module.  Add a call to the load balancer module, setting argument values corresponding to the input variables for the load balancer.  The module source should be "./load-balancer".
-
-Try writing this on your own first. Compare your code to the solution below (or in the vm-cluster.tf file in the solution folder).
-
-<details>
-
- _<summary>Click to see solution for calling load balancer module</summary>_
-
-```
-module "load-balancer" {
-  source = "./load-balancer"
-
-  location            = local.region
-  resource_group_name = azurerm_resource_group.lab.name
-  tags                = local.common_tags
-}
-```
-</details>
-
-In the root module, you now need to use the module outputs to replace references to the load balancer attributes.  Be sure to use the "module" prefix in the references.
-
-* Update the reference to backend_address_pool_id in vm-cluster.tf
-* Update the reference to load-balancer-public-ip in outputs.tf in the root module.
-
-### Execute terraform commands
-
-To run the terraform commands, you must be in the root module's directory.  :bangbang: **Verify you are in the root module folder.**  If not, move to that directory.
-
-Let's now validate the code you've written.  If you run terraform validate at this point, you will get an error that you need to run terraform init first.  Do you recall why this is necessary?
-
-Run terraform init.
-```
-terraform init
-```
-
-Run terraform validate and fix errors as appropriate.
-```
-terraform validate
-```
-
-Run terraform plan. You will see that Terraform wants to replace the load balancer and various ancillary resources.
-```
-terraform plan
-```
-
-![Terraform Plan - LB Module](./images/tf-plan-lb-module1.png "Terraform Plan - LB Module")
-
-![Terraform Plan - LB Module](./images/tf-plan-lb-module2.png "Terraform Plan - LB Module")
+ARM_TENANT_ID — Tenant ID
+ARM_CLIENT_ID — Service Principal APPID
+ARM_CLIENT_SECRET — Service Principal Password 
+ARM_SUBSCRIPTION_ID — Subscription ID generated from Get-AzSubscription | more 
 
 
-Run terraform apply:
-> If you get an error that a resource was not able to be re-created since its predecessor was not yet deleted (i.e., a name conflict), then you may have missed renaming a few resources earlier in this lab.  You should be able to just re-run terraform apply again since the conflicting resources should have been fully destroyed by the conclusion of the first apply.
-```
-terraform apply
-```
+![CICD_ARM_variables_Config](https://github.com/raviag09/terraform-azure-intro/assets/131940031/1e1dfecc-6a2c-46e5-9c3d-158123d1bc69)
 
-### (Optional) Trying out your infrastructure
 
-If you have extra time now or later, you can verify that the load balancer actually works to connect to the clustered VMs.  See the instructions at [Testing Your Cluster](../optional-material/testing_your_cluster.md).  If you already set up the HTTP servers before, you should be able to just hit the load balancer public IP again now.
-
-## Lab Cleanup
-
-This is the final lab of the class.  When you are done with the lab and are satisfied with the results, please tear down everything you created by running terraform destroy:
-```
-terraform destroy
-```
-
-You might get an error about not having permission to perform a purge action on the key vault.  If so, just run terraform destroy again.

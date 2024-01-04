@@ -1,18 +1,126 @@
 # Creating a Module
 
-Lab Objective
-- Convert the load balancer configuration in your code to a module
-- Use the new module in your configuration
+Lab Objective : Deploy Terraform Code in Azure
+- spin up a Resource group, a VNET, a subnet and a Windows Server 2016 virtual machine.
+- CI/CD pipeline of Gitlab is used 
 
 ## Preparation
 
-If you did not complete lab 5.1, you can simply copy the solution code from that lab (and do terraform apply) as the starting point for this lab.
+Please ensure that the backend storage account is available for your account as it stores the state remotely: aztflabsbackendNN. NN represents the student id(studentNN)
+if not available, create a storage account in Azure portal manually
 
 ## Lab
 
-### Modify code to implement the module
 
-In this lab we will convert the load balancer configuration to be a module implementation.  We will implement the module as a nested module, though in actual practice this module should probably be a module on its own.
+Let's setup the terraform files to create the resources.
+
+#### create the main file to create the resources
+main.tf
+
+```
+provider "azurerm" {
+  features {}
+}
+
+terraform {
+   backend "azurerm" {
+    resource_group_name  = "terraform-course-backend"
+    storage_account_name = "aztflabsbackend24"
+    container_name       = "tfstate"
+    key                  = "test.terraform.tfstate" 
+ }
+}
+
+resource "azurerm_resource_group" "main" {
+  name     = "${var.prefix}-resources"
+  location = var.location
+}
+
+resource "azurerm_virtual_network" "main" {
+  name                = "${var.prefix}-network"
+  address_space       = ["10.0.0.0/16"]
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+}
+
+resource "azurerm_subnet" "internal" {
+  name                 = "internal"
+  resource_group_name  = azurerm_resource_group.main.name
+  virtual_network_name = azurerm_virtual_network.main.name
+  address_prefixes     = ["10.0.2.0/24"]
+}
+
+resource "azurerm_network_interface" "main" {
+  name                = "${var.prefix}-nic"
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.internal.id
+    private_ip_address_allocation = "Dynamic"
+  }
+}
+
+resource "azurerm_windows_virtual_machine" "main" {
+  name                            = "${var.prefix}-vm"
+  resource_group_name             = azurerm_resource_group.main.name
+  location                        = azurerm_resource_group.main.location
+  size                            = "Standard_F2"
+  admin_username                  = "adminuser"
+  admin_password                  = "P@ssw0rd1234!"
+  network_interface_ids = [
+    azurerm_network_interface.main.id,
+  ]
+
+  source_image_reference {
+    publisher = "MicrosoftWindowsServer"
+    offer     = "WindowsServer"
+    sku       = "2016-Datacenter"
+    version   = "latest"
+  }
+
+  os_disk {
+    storage_account_type = "Standard_LRS"
+    caching              = "ReadWrite"
+  }
+}
+
+```
+
+#### create the variables file
+
+variables.tf
+```
+variable "prefix" {
+  description = "provide the prefix for resources"
+}
+
+variable "location" {
+  description = "input the region name where the resources need to be created"
+}
+
+```
+
+#### create the variables.tfvars file
+
+```
+
+prefix = "terraform"
+location = "eastus"
+
+```
+
+
+### setup the gitlab to initiate the CI/CD pipeline to manage tf project
+
+####Creating GitLab Project and Uploading the Code
+
+Go to Gitlab.com, log in with your credentials, select “New Project” and “Create Blank Project”
+
+
+
+
 
 Create a subdirectory called “load-balancer”.
 ```

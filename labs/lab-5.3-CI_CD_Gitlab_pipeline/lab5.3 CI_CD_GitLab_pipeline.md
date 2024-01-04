@@ -118,7 +118,7 @@ location = "eastus"
 
 Go to Gitlab.com, log in with your credentials, select “New Project” and “Create Blank Project”
 
-
+![gitlab account](https://github.com/raviag09/terraform-azure-intro/blob/main/labs/lab-5.3-CI_CD_Gitlab_pipeline/images/create_project_gitlab.PNG)
 
 
 

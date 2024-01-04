@@ -114,7 +114,7 @@ location = "eastus"
 
 ### setup the gitlab to initiate the CI/CD pipeline to manage tf project
 
-####Create the GitLab Project with your account and Uploading the Code. account creation takes a few mins and it's free of cost.
+#### Create the GitLab Project with your account and Uploading the Code. account creation takes a few mins and it's free of cost.
 
 Go to Gitlab.com, log in with your credentials, select “New Project” and “Create Blank Project”
 
@@ -229,7 +229,7 @@ ARM_CLIENT_SECRET
 ARM_SUBSCRIPTION_ID
 ARM_TENANT_ID
 
-###Creating the Service Principal in Azure
+### Creating the Service Principal in Azure
 
 we will run the commands on power shell to setup the AZ service principal. 
 
@@ -303,7 +303,42 @@ ARM_CLIENT_ID — Service Principal APPID
 ARM_CLIENT_SECRET — Service Principal Password 
 ARM_SUBSCRIPTION_ID — Subscription ID generated from Get-AzSubscription | more 
 
+![variables_add](https://github.com/raviag09/terraform-azure-intro/assets/131940031/9a414007-78e0-40c6-b342-bf634007af9a)
+
 
 ![CICD_ARM_variables_Config](https://github.com/raviag09/terraform-azure-intro/assets/131940031/1e1dfecc-6a2c-46e5-9c3d-158123d1bc69)
+
+### pipeline is all set for run to create the resources
+
+![runpipeline](https://github.com/raviag09/terraform-azure-intro/assets/131940031/7697b381-048e-47eb-a72d-e377b4f91deb)
+
+All the environment is configured and ready to deploy the resources, let’s run our pipeline
+
+once run, we can see the resources on azure portal.
+
+
+Optional( Bonus):
+
+Add the code above to the main.tf file, make the commit to repository and wait for pipeline to run:
+
+
+```
+
+resource "azurerm_container_registry" "acr" {
+  name                = "${var.prefix}acr"
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  sku                 = "Premium"
+  admin_enabled       = false
+}
+
+```
+
+
+
+
+
+
+
 
 

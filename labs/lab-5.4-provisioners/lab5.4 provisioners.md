@@ -16,6 +16,7 @@ we can run the commands or scripts remotely on azure resources using the provisi
 
 The command to invoke using provisioner "remote-exec"
 
+```
 resource "azurerm_virtual_machine" "example" {
   # ...
   provisioner "remote-exec" {
@@ -25,6 +26,8 @@ resource "azurerm_virtual_machine" "example" {
     ]
   }
 }
+
+````
 
 ## Lab
 

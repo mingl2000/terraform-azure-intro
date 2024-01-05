@@ -54,14 +54,10 @@ This time it should prompt you for a password.  Enter the password that was conf
 
 *You may also be prompted to confirm that you want to connect. Enter "yes".*
 
-Confirm you can ssh into the machine.
-
-![cs-vm-ssh](https://github.com/raviag09/terraform-azure-intro/assets/131940031/aa0c8707-28f2-459c-b26a-a47f3971d5fb)
+Here is the dynamic config output that will be returned
 
 
-Ensure that text file created using provisioners is present on the virtual machine
-
-![provisioner-hello](https://github.com/raviag09/terraform-azure-intro/assets/131940031/3a881276-5391-465e-a7a9-165424280422)
+![templatefile](https://github.com/raviag09/terraform-azure-intro/assets/131940031/f95b9ce1-ba11-4af4-a32b-92f2d65ae324)
 
 
 Exit the SSH session on the virtual machine.

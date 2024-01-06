@@ -64,3 +64,28 @@ resource "azurerm_linux_virtual_machine" "lab-bastion" {
 
   tags = local.common_tags
 }
+# the following will execute every time the "terraform apply" runs
+# the following may not remote the trace of previous runs of "terraform apply" in the next "terraform apply" runs
+# the key is the triggers part
+resource "null_resource" "ansible" {
+
+  triggers = {
+    always_run = timestamp()
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "echo 'Hello, World----v3!' > hello2.txt",  # Execute shell commands on the remote VM
+
+    ]
+
+    connection {
+      timeout     = "1m"  # Increase timeout if needed
+      type        = "ssh"
+      host        = azurerm_linux_virtual_machine.lab-bastion.public_ip_address
+      user        = "adminuser"
+      password    = "aztfVMpwd42"  # Use the same password specified above
+    }
+  }
+
+}
